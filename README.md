@@ -4,7 +4,7 @@ This repository contains PyTorch implementation for CVPR 2025 paper: **DIFFER: D
 
 [🔗 Paper Link (arXiv)](https://arxiv.org/abs/2503.22912)
 
-![Model Architecture](figure/differ_method.pdf)
+![Model Architecture](figure/differ_method.png)
 
 ## Abstract
 
@@ -24,7 +24,7 @@ pip install -r requirements.txt
 
 ## Training & Evaluation
 
-1. Generate or download the **textual features**, and place them in a directory with the following structure:
+1. Generate or download the **textual features** (will upload soon), and place them in a directory with the following structure:
 
 ```
 TextCaptionDirectory/
