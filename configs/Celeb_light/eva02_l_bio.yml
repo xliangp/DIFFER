@@ -1,0 +1,37 @@
+MODEL:
+  TYPE: eva02_cloth
+  NAME: eva02_l_bio
+  METRIC_LOSS_TYPE: ['ce','triplet','clipBio','clipBioReverse']
+  LAST_LAYER: 'clipFc_clsFc'
+  IF_LABELSMOOTH: 'off'
+  IF_WITH_CENTER: 'no'
+  NO_MARGIN: True
+  CLIP_DIM: 1024
+
+DATA:
+  IMG_HEIGHT: 224
+  IMG_WIDTH: 224
+  DATASET: 'celeb_light'
+  SUMMERY_TEXT: False
+  TEXT_MODEL: 'EVA02-CLIP'
+
+SOLVER:
+  OPTIMIZER_NAME: 'SGD'
+  MAX_EPOCHS: 60
+  BASE_LR: 2e-5
+  WARMUP_METHOD: 'linear'
+  LARGE_FC_LR: False
+  CHECKPOINT_PERIOD: 60
+  LOG_PERIOD: 50
+  EVAL_PERIOD: 1
+  WEIGHT_DECAY:  0.05
+  WEIGHT_DECAY_BIAS: 0.05
+  BIAS_LR_FACTOR: 2
+
+TEST:
+  WEIGHT: ''
+  FEAT_NORM: 'yes'
+  TYPE: 'image_only'
+OUTPUT_DIR: './logs/celeb_light'
+
+
