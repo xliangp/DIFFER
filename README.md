@@ -11,7 +11,6 @@ This repository contains PyTorch implementation for CVPR 2025 paper: **DIFFER: D
 
 DIFFER leverages text prompts to disentangle biometric and non-biometric factors (e.g., clothing, pose, hairstyle) in person re-identification under clothing changes. See our paper for full details.
 
-Clothes-changing person re-identification (CC-ReID) aims to recognize individuals under different clothing scenarios. In this work, we propose DIFFER, a novel adversarial learning method that leverages textual descriptions to disentangle identity features. Recognizing that image features inherently mix inseparable information, DIFFER introduces NBDetach, a mechanism designed for feature disentanglement by leveraging the separable nature of text descriptions as supervision. It partitions the feature space into distinct subspaces and, through gradient reversal layers, effectively separates identity-related features from non-biometric features.
 
 
 ## Installation
