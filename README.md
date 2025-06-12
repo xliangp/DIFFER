@@ -41,7 +41,7 @@ TextCaptionDirectory/
 2, To train the model:
 ```bash
 CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --master_port $PORTNUM train.py  \
---jobId 1 \
+--jobId 0 \
 --loss "ce,triplet,clipBio,clipBioReverse"  \
 --config_file 'configs/ltcc/eva02_l_bio.yml' \
 MODEL.DIST_TRAIN True \
