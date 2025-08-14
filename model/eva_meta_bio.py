@@ -43,6 +43,7 @@ from timm.models.helpers  import build_model_with_cfg
 from timm.models.registry import generate_default_cfgs, register_model
 
 from torchinfo import summary
+from functools import partial
 
 __all__ = ['Eva']
 
@@ -473,8 +474,51 @@ class GradientReversalClassifier(torch.nn.Module):
         class_score=self.head_fc(x_reverse)
         return class_score
 
-                    
-                
+        
+    
+class GradientReversalMLP(nn.Module):
+    def __init__(
+            self,
+            in_features,
+            hidden_features=None,
+            out_features=None,
+            act_layer=nn.GELU,
+            norm_layer=None,
+            bias=True,
+            drop=0.,
+            alpha=1.0,
+    ):
+        super().__init__()
+        self.alpha=alpha
+        self.grl = GradientReversalLayer(self.alpha)
+        out_features = out_features or in_features
+        hidden_features = hidden_features or in_features
+        bias = to_2tuple(bias)
+        drop_probs = to_2tuple(drop)
+
+        self.fc1 = nn.Linear(in_features, hidden_features, bias=bias[0])
+        self.act = act_layer()
+        self.drop1 = nn.Dropout(drop_probs[0])
+        self.norm = norm_layer(hidden_features) if norm_layer is not None else nn.Identity()
+        self.fc2 = nn.Linear(hidden_features, out_features, bias=bias[1])
+        self.drop2 = nn.Dropout(drop_probs[1])
+        self.apply(self._init_weights)
+        
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+
+    def forward(self, x):
+        x = self.grl(x)
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.drop1(x)
+        x = self.norm(x)
+        x = self.fc2(x)
+        x = self.drop2(x)
+        return x             
                   
 
 class Eva(nn.Module):
@@ -493,7 +537,7 @@ class Eva(nn.Module):
             num_classes: int = 1000,
             embed_dim: int = 768,
             clip_feat_dim: int = 1024,
-            last_layer: str = 'clipFc_clsFc',
+            last_layer: str = 'clipFc',
             global_pool: str = 'avg',
             depth: int = 12,
             num_heads: int = 12,
@@ -524,7 +568,7 @@ class Eva(nn.Module):
             nonBio_num: int = 3,
             reverse_bio: bool = True,
             CLIP_LOSS_TYPE='constant',
-            vpt=0,
+            subspace_dim: int = 0,
     ):
         """
 
@@ -610,7 +654,7 @@ class Eva(nn.Module):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
         block_fn = EvaBlockPostNorm if use_post_norm else EvaBlock
         
-        if   self.last_layer in ['clipFc_clsFc']:
+        if  self.last_layer in ['clipFc','clipMLP']:
             depth-=1
         self.blocks = nn.ModuleList([
             block_fn(
@@ -654,7 +698,7 @@ class Eva(nn.Module):
                 self.weight_nonbio = torch.nn.Parameter(torch.Tensor(clip_feat_dim,embed_dim))
                 self.weight_nonbio.data=init_weight.flip(dims=[1])
               
-        elif  self.last_layer in ['clipFc_clsFc']:
+        elif  self.last_layer in ['clipFc','clipMLP']:
             del self.norm
             self.head_bio=block_fn(dim=embed_dim,
                 num_heads=num_heads,
@@ -671,25 +715,39 @@ class Eva(nn.Module):
                 init_values=init_values,)
             self.norm_bio = nn.Identity() if use_fc_norm else norm_layer(embed_dim)
             
-            if self.last_layer in ['clipFc_clsFc']:
+            if self.CLIP_LOSS_TYPE=='constant':
+                self.logit_scale_bio = 1
+                self.logit_bias_bio = 0
+            elif self.CLIP_LOSS_TYPE=='contrastive':
+                self.logit_scale_bio = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+                self.logit_bias_bio = 0
+            elif self.CLIP_LOSS_TYPE=='sigmoid':
+                self.logit_scale_bio = nn.Parameter(torch.randn(1))
+                self.logit_bias_bio = nn.Parameter(torch.randn(1))
+            
+            if self.last_layer=='clipFc':
                 # del self.head
                 # self.head = nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
                 self.head_clip_bio = nn.Linear(embed_dim, clip_feat_dim) if clip_feat_dim > 0 else nn.Identity()
-                if self.CLIP_LOSS_TYPE=='constant':
-                    self.logit_scale_bio = 1
-                    self.logit_bias_bio = 0
-                elif self.CLIP_LOSS_TYPE=='contrastive':
-                    self.logit_scale_bio = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
-                    self.logit_bias_bio = 0
-                elif self.CLIP_LOSS_TYPE=='sigmoid':
-                    self.logit_scale_bio = nn.Parameter(torch.randn(1))
-                    self.logit_bias_bio = nn.Parameter(torch.randn(1))
-                if self.add_nonBio:
-                    self.head_clip_nonbio = nn.ModuleList([nn.Linear(embed_dim, clip_feat_dim) for x in range(self.nonBio_num)])
-                    
+            elif self.last_layer=='clipMLP':
+                self.head_clip_bio = Mlp(
+                        in_features=embed_dim,
+                        hidden_features=subspace_dim,
+                        out_features=clip_feat_dim,
+                    )
+                
+                
+            if self.add_nonBio:
+                self.head_clip_nonbio = nn.ModuleList([nn.Linear(embed_dim, clip_feat_dim) for x in range(self.nonBio_num)])
+                
             if self.reverse_bio:
-                self.head_clip_bioReverse=nn.ModuleList([GradientReversalClassifier(in_num=embed_dim,class_num=clip_feat_dim) 
-                                                          for x in range(self.nonBio_num)])
+                if self.last_layer=='clipFc':
+                    self.head_clip_bioReverse=nn.ModuleList([GradientReversalClassifier(in_num=embed_dim,class_num=clip_feat_dim) 
+                                                            for x in range(self.nonBio_num)])
+                elif self.last_layer=='clipMLP':
+                    self.head_clip_bioReverse=nn.ModuleList([GradientReversalMLP(in_features=embed_dim,hidden_features=subspace_dim,
+                                                                                out_features=clip_feat_dim,alpha=1.0)
+                                                            for x in range(self.nonBio_num)])
                 if self.CLIP_LOSS_TYPE=='constant':
                     self.logit_scale_nonbios = [1 for x in range(self.nonBio_num)]
                     self.logit_bias_nonbios=0
@@ -779,7 +837,7 @@ class Eva(nn.Module):
                 x = checkpoint(blk, x, rope=rot_pos_embed)
             else:
                 x = blk(x, rope=rot_pos_embed)       
-        if  self.last_layer in ['clipFc_clsFc']:
+        if  self.last_layer in ['clipFc','clipMLP']:
             x_bio=self.head_bio(x,rope=rot_pos_embed)
             x_bio = self.norm_bio(x_bio)
             if self.add_nonBio:
@@ -835,7 +893,7 @@ class Eva(nn.Module):
                 score_output['clip_nonbio_bias']=self.logit_bias_nonbios
                 
                 
-            if self.last_layer in ['clipFc_clsFc']:
+            if self.last_layer in ['clipFc','clipMLP']:
                 clip_bio_score=self.head_clip_bio(feat_bio)
                 score_output['clip_bio_score']=clip_bio_score
                 score_output['clip_bio_scale']=self.logit_scale_bio
@@ -885,9 +943,7 @@ def checkpoint_filter_fn(
                 k = k[len_prefix:]
             else:
                 continue
-        # if model.last_layer in ['transformer','clipFc_clsFc'] and k.startswith('norm'):
-        #     #print(cc)
-        #     print(k)
+      
             
         if 'rope' in k:
             # fixed embedding no need to load buffer from checkpoint
@@ -934,7 +990,7 @@ def checkpoint_filter_fn(
                 # skip pretrain mask token & head weights
                 continue
         
-        if model.last_layer in ['clipFc_clsFc'] and k.find(str(model.depth-1))>0:
+        if model.last_layer in ['clipFc','clipMLP'] and k.find(str(model.depth-1))>0:
                 block_name=f'blocks.{model.depth-1}'
                 
                 k_bio=k.replace(block_name,'head_bio')
@@ -1016,10 +1072,11 @@ def eva02_large_patch14_clip_224_bio(pretrained=False,config={}, **kwargs) -> Ev
         camera_xishu=config.MODEL.CAMERA_XISHU,
         last_layer=config.MODEL.LAST_LAYER,
         add_nonBio=config.MODEL.NONBIO_HEAD,
-        nonBio_num=len(config.DATA.NOBIO_INDEX.strip('*').split('*')),
-        reverse_bio='clipBioReverse' in config.MODEL.METRIC_LOSS_TYPE,
+        nonBio_num=len(config.DATA.NOBIO_INDEX),
+        reverse_bio='clipBioReverse' in config.MODEL.LOSS_TYPE,
         clip_feat_dim=config.MODEL.CLIP_DIM,
         CLIP_LOSS_TYPE=config.MODEL.CLIP_LOSS_TYPE,
+        subspace_dim=config.MODEL.SUBSPACE_DIM,
     )
     model = _create_eva('eva02_large_patch14_clip_224', pretrained=pretrained, **dict(model_args, **kwargs))
     return model

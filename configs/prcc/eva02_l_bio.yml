@@ -1,8 +1,8 @@
 MODEL:
   TYPE: eva02_cloth
   NAME: eva02_l_bio
-  METRIC_LOSS_TYPE: ['ce','triplet','clipBio','clipBioReverse']
-  LAST_LAYER: 'clipFc_clsFc'
+  LOSS_TYPE: ['ce','triplet','clipBio','clipBioReverse']
+  LAST_LAYER: 'clipFc'
   IF_LABELSMOOTH: 'off'
   IF_WITH_CENTER: 'no'
   NO_MARGIN: True

@@ -12,7 +12,7 @@ from tools.utils import mkdir_if_missing, write_json, read_json
 import json
 
 
-class Celeb_light(object):
+class Celeb(object):
     """ Celeb-reID-light
 
     Reference:
@@ -20,8 +20,8 @@ class Celeb_light(object):
 
     URL: https://naiq.github.io/LTCC_Perosn_ReID.html#
     """
-    dataset_dir = 'Celeb-reID-light'
-    def __init__(self, root='data',caption_dir='/home/xi860799/dataset/CogVLM_results/Celeb-reID-light',caption_model='EVA02-CLIP-bigE-14',load_sum_ft=False, **kwargs):
+    dataset_dir = 'Celeb-reID'
+    def __init__(self, root='data',caption_dir='../CogVLM/basic_demo/CogVLM_results/Celeb-reID',caption_model='EVA02-CLIP-bigE-14',load_sum_ft=False, **kwargs):
         logger = logging.getLogger('EVA-attribure')
         self.logger=logger
         
@@ -31,14 +31,14 @@ class Celeb_light(object):
         self.query_dir = osp.join(self.dataset_dir, 'query')
         self.gallery_dir = osp.join(self.dataset_dir, 'gallery')
         self._check_before_run()
-        
-        self.bio_index=list(map(int,kwargs['bio_index']))
-        self.non_bio_index=list(map(int,kwargs['nonbio_index']))
+        self.non_bio_index=list(map(int,kwargs['nonbio_index'].strip('*').split('*')))
         
 
         self.load_sum_ft=load_sum_ft
-        self.caption_dir =os.path.join(caption_dir,caption_model)
-        self.ft_name='ft_'+caption_model
+        self.caption_dir =caption_dir+'_'+caption_model+"_textFeature5"
+        if self.load_sum_ft:
+            self.caption_sum_dir =caption_dir
+            self.ft_name='ft_'+caption_model
             
         train, num_train_pids, num_train_imgs, num_train_clothes, pid2clothes = \
             self._process_dir_train(self.train_dir)
@@ -74,8 +74,6 @@ class Celeb_light(object):
         self.num_query_imgs = num_query_imgs
         self.pid2clothes = pid2clothes
         self.num_camera=1
-        self.num_test_pids = num_test_pids
-        self.num_gallery_imgs = num_gallery_imgs
 
     def _check_before_run(self):
         """Check if all files are available before going deeper"""
@@ -90,21 +88,15 @@ class Celeb_light(object):
 
     def _process_dir_train(self, dir_path):
         if self.load_sum_ft:
-            sum_id_file=os.path.join(self.caption_sum_dir,'train_caption_summary_biometric.json')
+            sum_id_file=os.path.join(self.caption_sum_dir,'train_caption_attribute_id_ft3.json')
             with open(sum_id_file,'r') as f:
                 sum_id_info=json.load(f)
                 
-            # sum_cloth_file=os.path.join(self.caption_sum_dir,'train_caption_summary_clothes.json')
-            # with open(sum_cloth_file,'r') as f:
-            #     sum_cloth_info=json.load(f)
-            
-            
-        caption_path=os.path.join(self.caption_dir,dir_path.split('/')[-1]+'.npz')
-        all_caption = np.load(caption_path, allow_pickle=True)
-        all_caption_features = all_caption['data']
-        all_caption_files = all_caption['metadata']
-        ftNums=int(all_caption_features.shape[0]/all_caption_files.shape[0])
-        all_caption_files=list(all_caption_files)
+            sum_cloth_file=os.path.join(self.caption_sum_dir,'train_caption_attribute_clothing_ft3.json')
+            with open(sum_cloth_file,'r') as f:
+                sum_cloth_info=json.load(f)
+            first_key, first_value = next(iter(sum_id_info.items()))
+            feat_dim=np.asarray(first_value[self.ft_name]).shape[1]
                 
         img_paths = glob.glob(osp.join(dir_path, '*.jpg'))
         img_paths.sort()
@@ -137,17 +129,31 @@ class Celeb_light(object):
             # camid -= 1 # index starts from 0
             
             clothes_id = clothes2label[clothes]
-            
-            caption_feature_index=all_caption_files.index(img_path[len(dir_path)+1:][:-4])
-            caption_feature_load=all_caption_features[caption_feature_index*ftNums:(caption_feature_index+1)*ftNums]
-            caption_feature=caption_feature_load[self.bio_index+self.non_bio_index]
-              
+           
+            if self.non_bio_index==[2] and self.load_sum_ft:
+                caption_feature=np.zeros((2,feat_dim))
+            else:
+                caption_path=os.path.join(self.caption_dir,os.path.splitext(img_path[len(self.dataset_dir)+1:])[0]+'.npy')
+                if os.path.isfile(caption_path):
+                    caption_feature_load=np.load(caption_path)
+                    caption_feature=caption_feature_load[[0]+self.non_bio_index]
+                else:
+                    self.logger.info(f"fail to find file {caption_path}")
+                    caption_feature=caption_feature#np.zeros((2,1024))
+                       
+            if self.load_sum_ft:
+                id_ft=np.asarray(sum_id_info[str(pid)][self.ft_name])
+                cloth_ft=np.asarray(sum_cloth_info[clothes][self.ft_name])
+                caption_feature[0]=id_ft
+                if 2 in self.non_bio_index:
+                    cloth_index=self.non_bio_index.index(2)
+                    caption_feature[1+cloth_index]=cloth_ft
                     
             pid = pid2label[pid]
             data={
                 "image_path": img_path,
                 "pid": pid,
-                "camid": camid,
+                "camid": 0,
                 "clothes_id": clothes_id,
                 "caption_feature":caption_feature,
                 }
@@ -204,7 +210,7 @@ class Celeb_light(object):
             data={
                 "image_path": img_path,
                 "pid": pid,
-                "camid": camid,
+                "camid": 0,
                 "clothes_id": clothes_id,
                 }
             query_dataset.append(data)
@@ -220,7 +226,7 @@ class Celeb_light(object):
             data={
                 "image_path": img_path,
                 "pid": pid,
-                "camid": camid,
+                "camid": 0,
                 "clothes_id": clothes_id,
                 }
             gallery_dataset.append(data)

@@ -229,3 +229,12 @@ ENV/
 */__pycache__/*
 
 *.slurm
+
+combineNpyFiles.py
+
+gptSampleRun.py
+
+readLog.py
+summerizeIdInfo.py
+summerizeNonBio.py
+textDescriptionInfo.txt

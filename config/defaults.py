@@ -30,7 +30,7 @@ _C.MODEL.ID_LOSS_TYPE = 'softmax'
 _C.MODEL.ID_LOSS_WEIGHT = 1.0
 _C.MODEL.TRIPLET_LOSS_WEIGHT = 1.0
 
-_C.MODEL.METRIC_LOSS_TYPE = ['ce','triplet']
+_C.MODEL.LOSS_TYPE = ['ce','triplet']
 _C.MODEL.CLIP_LOSS_TYPE = 'constant'
 # If train with multi-gpu ddp mode, options: 'True', 'False'
 _C.MODEL.DIST_TRAIN = False
@@ -42,12 +42,13 @@ _C.MODEL.IF_LABELSMOOTH = 'on'
 _C.MODEL.COS_LAYER = False
 # Dimension of the attribute list
 _C.MODEL.META_DIMS = []
-_C.MODEL.CAMERA_XISHU = 1
+_C.MODEL.CAMERA_XISHU = 3
 # ID number of GPU
 _C.MODEL.DEVICE_ID = "0"
 _C.MODEL.NONBIO_HEAD=False
 _C.MODEL.CLIP_DIM=1024
 _C.MODEL.EMBEDDING_DIM=0
+_C.MODEL.SUBSPACE_DIM=0
 _C.MODEL.BOTTEL_NECK=False
 _C.MODEL.NORM_FEAT=False
 
@@ -87,7 +88,7 @@ _C.DATA.SAMPLER = 'softmax_triplet'
 _C.DATA.AUX_INFO = False
 # Filename containing attributes
 _C.DATA.META_DIR = 'PAR_PETA_105.txt'
-_C.DATA.NOBIO_INDEX='2'
+_C.DATA.NOBIO_INDEX=['2']
 _C.DATA.BIO_INDEX='0'
 _C.DATA.TEXT_MODEL='EVA02-CLIP'
 _C.DATA.CAPTION_DIR='/home/xi860799/dataset/CogVLM_results/LTCC_ReID2'

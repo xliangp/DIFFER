@@ -1,25 +1,33 @@
 MODEL:
   TYPE: eva02_cloth
   NAME: eva02_l_bio
-  METRIC_LOSS_TYPE: ['ce','triplet','clipBio','clipBioReverse']
-  LAST_LAYER: 'clipFc_clsFc'
+  LOSS_TYPE: ['ce','triplet']
+  NONBIO_HEAD: False
+  LAST_LAYER: 'clipMLP'
   IF_LABELSMOOTH: 'off'
   IF_WITH_CENTER: 'no'
   NO_MARGIN: True
   CLIP_DIM: 1024
+  CLIP_LOSS_TYPE: 'constant'
+  SUBSPACE_DIM: 512
+
 
 DATA:
   IMG_HEIGHT: 224
   IMG_WIDTH: 224
-  DATASET: 'ccvid'
-  SUMMERY_TEXT: False
-  NOBIO_INDEX: '2*'
+  DATASET: 'ltcc'
+  NOBIO_INDEX: '1,2'
+  SUMMERY_TEXT: false
   TEXT_MODEL: 'EVA02-CLIP'
+  NUM_INSTANCES: 2
+  BATCH_SIZE: 8
+  NUM_WORKERS: 1
+  PIN_MEMORY: False
 
 SOLVER:
   OPTIMIZER_NAME: 'SGD'
   MAX_EPOCHS: 60
-  BASE_LR: 2e-5
+  BASE_LR: 2e-6
   WARMUP_METHOD: 'linear'
   LARGE_FC_LR: False
   CHECKPOINT_PERIOD: 60
@@ -33,6 +41,6 @@ TEST:
   WEIGHT: ''
   FEAT_NORM: 'yes'
   TYPE: 'image_only'
-OUTPUT_DIR: './logs/ccvid'
+OUTPUT_DIR: './logs/ltcc'
 
 

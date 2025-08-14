@@ -52,7 +52,7 @@ def clip_l2_loss(score, logit_scale=torch.zeros(1)):
 
 def make_loss(cfg, num_classes,lossTypes=None,test_class_num=0):    # modified by gu
     if lossTypes is None:
-        lossTypes=cfg.MODEL.METRIC_LOSS_TYPE
+        lossTypes=cfg.MODEL.LOSS_TYPE
 
     sampler = cfg.DATA.SAMPLER
     entropy_with_ftAug=True
@@ -127,7 +127,7 @@ def make_loss(cfg, num_classes,lossTypes=None,test_class_num=0):    # modified b
                     image_features_bio,image_features_nonbio=feat
                 elif cfg.MODEL.LAST_LAYER in ['fc']:
                     image_features_bio,image_features_nonbio,weight_bio,weight_nonbio=feat
-                elif cfg.MODEL.LAST_LAYER in ['clipFc_clsFc']:
+                elif cfg.MODEL.LAST_LAYER in ['clipFc','clipMLP']:
                     image_features_bio=score['clip_bio_score']    
                     if 'clip_nonbio_score' in score:
                         image_features_nonbio=score['clip_nonbio_score']
@@ -154,18 +154,15 @@ def make_loss(cfg, num_classes,lossTypes=None,test_class_num=0):    # modified b
             
 
             
-            if 'clipBio' in lossTypes :
+            if 'clipBio' in lossTypes:
                 loss_clip_all=0
                 for i in range(image_features_bio.shape[1]):
-                    if cfg.MODEL.CLIP_LOSS_TYPE=='constant':
-                        #loss_clip,i2t_acc=clip_contrastive_score_loss(score['clip_bio_score'][i])
-                        loss_clip,i2t_acc=clip_contrastive_loss(image_features_bio[:,i], text_features_bio[:,i])
-                    elif cfg.MODEL.CLIP_LOSS_TYPE=='contrastive':
-                        loss_clip,i2t_acc=clip_contrastive_loss(image_features_bio[:,i], text_features_bio[:,i], logit_scale=score['clip_bio_scale'])
-                    elif cfg.MODEL.CLIP_LOSS_TYPE=='sigmoid':
-                        loss_clip,i2t_acc=clip_sigmoid_loss(image_features_bio[:,i], text_features_bio[:,i], logit_scale=score['clip_bio_scale'],logit_bias=score['clip_bio_bias'])
-                    elif cfg.MODEL.CLIP_LOSS_TYPE=='l2':
-                        loss_clip,i2t_acc=clip_l2_loss(score['clip_bio_score'][i])
+                    logits_per_bio = image_features_bio[:,i]  @ text_features_bio[:,i].T
+                    labels = torch.arange(image_features_bio[:,i].shape[0],device=image_features_bio.device)
+                    loss_clip = F.cross_entropy(logits_per_bio, labels)
+                   
+                    i2t_acc = (logits_per_bio.argmax(-1) == labels).sum() / len(logits_per_bio)
+                   
                         
                     loss_clip_all+=loss_clip
                     train_writer.add_scalar('acc/clip_bio_'+str(i), i2t_acc.item(), step)
@@ -179,32 +176,22 @@ def make_loss(cfg, num_classes,lossTypes=None,test_class_num=0):    # modified b
             if 'clipBioReverse' in lossTypes :
                 image_feature_reverse=score['clip_bio_reverse_score']
                 loss_clip_reverse=0
-                image_feature_reverse=torch.nn.functional.normalize(image_feature_reverse,dim=-1)
-                image_feature_reverse=image_feature_reverse.type(text_features_nonbio.type())
-                #labels = torch.arange(image_feature_reverse.shape[0],device=image_feature_reverse.device)
-                #logits_per_bio_reverse = image_feature_reverse @ text_features_nonbio.T
+              
                 for i in range(image_feature_reverse.shape[1]):
-                    if cfg.MODEL.CLIP_LOSS_TYPE=='constant':
-                        #loss_image,i2t_acc=clip_contrastive_loss(image_feature_reverse[:,i], text_features_nonbio[:,i])
-                        loss_image,i2t_acc=clip_contrastive_loss(image_feature_reverse[:,i], text_features_nonbio[:,i])
-                    elif cfg.MODEL.CLIP_LOSS_TYPE=='contrastive':
-                        loss_image,i2t_acc=clip_contrastive_loss(image_feature_reverse[:,i], text_features_nonbio[:,i], logit_scale=score['clip_nonbio_scale'][i])
-                    elif cfg.MODEL.CLIP_LOSS_TYPE=='sigmoid':
-                        loss_image,i2t_acc=clip_sigmoid_loss(image_feature_reverse[:,i], text_features_nonbio[:,i], logit_scale=score['clip_nonbio_scale'][i],logit_bias=score['clip_nonbio_bias'][i])
-                    elif cfg.MODEL.CLIP_LOSS_TYPE=='l2':
-                        loss_image,i2t_acc=clip_l2_loss(score['clip_nonbio_score'][i])
-               
-                    # logits_per_bio_reverse = image_feature_reverse[:,i] @ text_features_nonbio[:,i].T
-                    # # symmetric loss function
+                    image_feature_reverse_i=torch.nn.functional.normalize(image_feature_reverse[i])
+                    image_feature_reverse_i=image_feature_reverse_i.type(text_features_nonbio.type())
+                    logits_per_bio_reverse = image_feature_reverse_i @ text_features_nonbio[:,i].T
+                    # symmetric loss function
+                    labels = torch.arange(image_feature_reverse[i].shape[0],device=image_feature_reverse[i].device)
+                    loss_image = F.cross_entropy(logits_per_bio_reverse, labels)
                     
-                    # loss_image = F.cross_entropy(logits_per_bio_reverse, labels)
-                    
-                    # i2t_acc = (logits_per_bio_reverse.argmax(-1) == labels).sum() / len(logits_per_bio_reverse)
+                    i2t_acc = (logits_per_bio_reverse.argmax(-1) == labels).sum() / len(logits_per_bio_reverse)
                     train_writer.add_scalar('acc/clip_bio_reverse_'+str(i), i2t_acc.item(), step)
                     #print(loss_image)
                     loss_clip_reverse += loss_image 
                     train_writer.add_scalar('loss/clip_bio_reverse_'+str(i), loss_clip_reverse.item(), step)
-               
+             
+            
                 loss+=loss_clip_reverse
 
 

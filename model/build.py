@@ -37,7 +37,7 @@ class build_transformer(nn.Module):
         nonBio_num=len(cfg.DATA.NOBIO_INDEX.strip('*').split('*'))
         bio_num=len(cfg.DATA.BIO_INDEX.strip('*').split('*'))
         
-        reverse_bio='clipBioReverse' in cfg.MODEL.METRIC_LOSS_TYPE
+        reverse_bio='clipBioReverse' in cfg.MODEL.LOSS_TYPE
         clip_feat_dim=cfg.MODEL.CLIP_DIM
         
         self.last_layer=cfg.MODEL.LAST_LAYER
@@ -97,7 +97,7 @@ class build_transformer(nn.Module):
                 else:
                     self.head_clip_bio[x].weight.data = clip_projection_weight.clone()
         
-        if 'clipBio' in cfg.MODEL.METRIC_LOSS_TYPE:
+        if 'clipBio' in cfg.MODEL.LOSS_TYPE:
             if cfg.MODEL.CLIP_LOSS_TYPE=='constant':
                 self.logit_scale_bio = 1
                 self.logit_bias_bio = 0

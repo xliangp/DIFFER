@@ -1,9 +1,9 @@
 MODEL:
   TYPE: eva02_cloth
   NAME: eva02_l_bio
-  METRIC_LOSS_TYPE: ['ce','triplet']
+  LOSS_TYPE: ['ce','triplet']
   NONBIO_HEAD: False
-  LAST_LAYER: 'clipFc_clsFc'
+  LAST_LAYER: 'clipFc'
   IF_LABELSMOOTH: 'off'
   IF_WITH_CENTER: 'no'
   NO_MARGIN: True
@@ -15,7 +15,7 @@ DATA:
   IMG_HEIGHT: 224
   IMG_WIDTH: 224
   DATASET: 'ltcc'
-  NOBIO_INDEX: '2*1'
+  NOBIO_INDEX: '1,2'
   SUMMERY_TEXT: false
   TEXT_MODEL: 'EVA02-CLIP'
   NUM_INSTANCES: 2

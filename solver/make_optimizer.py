@@ -23,7 +23,8 @@ def make_optimizer(cfg, model, center_criterion,lr_new=0):
 
         params += [{"params": [value], "lr": lr, "weight_decay": weight_decay}]
         
-    print(f'Using {cfg.SOLVER.LARGE_FC_FACTOR} times learning rate for ',large_lr_layers)
+    if len(large_lr_layers) > 0:
+        print(f'Using {cfg.SOLVER.LARGE_FC_FACTOR} times learning rate for ',large_lr_layers)
 
     if cfg.SOLVER.OPTIMIZER_NAME == 'SGD':
         optimizer = getattr(torch.optim, cfg.SOLVER.OPTIMIZER_NAME)(params, momentum=cfg.SOLVER.MOMENTUM)

@@ -25,12 +25,12 @@ pip install -r requirements.txt
 
 ## Training & Evaluation
 
-1. Generate or download the **textual features** (will upload soon), and place them in a directory with the following structure:
+1. Generate or download the **textual features** ([link](https://drive.google.com/drive/folders/171pES67flGW-DCIXyQ2VB7iU3BTUqhj5?usp=sharing)), and place them in a directory with the following structure:
 
 ```
 TextCaptionDirectory/
 ├── Dataset1/
-│   ├── TextEncoderModelVersion/
+│   ├── TextEncoderVersion/
 │   │   └── train.npz
 │   └── train_caption_summary_biometric.json
 ├── Dataset2/
@@ -38,6 +38,8 @@ TextCaptionDirectory/
 ```
 
 * `train_caption_summary_biometric.json` contains all the summarized biometric information and its corresponding textual encodings.
+
+* `train.npz` contains all the text encodings from different perspectives. The perspectives are encoded with the following numeric mapping:   0 (Biometrics), 1 (Hairstyle), 2(Clothing), 3 (Pose), 4 (Interaction), 5 (Environment).  
 
 2, To train the model:
 ```bash
@@ -50,6 +52,13 @@ OUTPUT_NAME "DIFFER" \
 DATA.CAPTION_DIR "/TextCaptionDirectory/LTCC_ReID" \
 DATA.ROOT "/DatasetsDirectory"
 ```
+Our trained weight can be found [here](https://drive.google.com/drive/folders/1RzAhSeSOgL2u8130mFAMdHI2k4sX9dQD?usp=sharing) .
+
+
+> **Reproducibility Note**  
+> This project uses adversarial training, which can be inherently unstable.  
+> Although we fixed the random seed, final results may vary across runs due to FPS16 training and training dynamics.   
+> To reproduce the results reported in our paper, we recommend running the training multiple times.
 
 3, To evaluate the model,
 
@@ -57,8 +66,8 @@ DATA.ROOT "/DatasetsDirectory"
 CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --master_port 6673 test.py \
 --config_file 'MODELDIR/config.yml' \
 TEST.WEIGHT 'MODELDIR/eva02_l_bio_best.pth' 
-
 ```
+
 
 ## Code Acknowledgment
 

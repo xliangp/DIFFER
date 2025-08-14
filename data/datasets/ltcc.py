@@ -32,8 +32,8 @@ class LTCC(object):
         self.gallery_dir = osp.join(self.dataset_dir, 'test')
         self._check_before_run()
         self.load_sum_ft=load_sum_ft
-        self.bio_index=list(map(int,kwargs['bio_index'].strip('*').split('*')))
-        self.non_bio_index=list(map(int,kwargs['nonbio_index'].strip('*').split('*')))
+        self.bio_index=list(map(int,kwargs['bio_index']))
+        self.non_bio_index=list(map(int,kwargs['nonbio_index']))
         
         self.caption_dir =os.path.join(caption_dir,caption_model)
         self.ft_name='ft_'+caption_model
@@ -149,14 +149,7 @@ class LTCC(object):
             caption_feature_load=all_caption_features[caption_feature_index*ftNums:(caption_feature_index+1)*ftNums]
             caption_feature=caption_feature_load[self.bio_index+self.non_bio_index]
             
-            if False:
-                caption_path=os.path.join(self.caption_dir,os.path.splitext(img_path[len(self.dataset_dir)+1:])[0]+'.npy')
-                if os.path.isfile(caption_path):
-                    caption_feature_loadOg=np.load(caption_path)
-                    caption_feature=caption_feature_load[[0]+self.non_bio_index]
-                else:
-                    #self.logger.info(f"fail to find file {caption_path}")
-                    caption_feature=np.zeros((2,512))
+         
                        
             if self.load_sum_ft and 0 in self.bio_index:
                 id_ft=np.asarray(sum_id_info[str(pid)][self.ft_name])

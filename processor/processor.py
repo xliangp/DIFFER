@@ -146,29 +146,18 @@ def do_train(cfg,
             
            
             with amp.autocast(enabled=True):
-                # if cfg.DATA.DATASET in VID_DATASET:
-                #     b,c,t,h,w = imgs.size()
-                #     imgs= imgs.view(-1,c,h,w)
-                #     clothes_ids = clothes_ids.to(device)     
-                #     cloth_labels_extended = clothes_ids.unsqueeze(1).repeat(1, t)
-                #     camids = cloth_labels_extended.view(-1)
-                    
+              
                 score, feat = model(samples, cam_label=camids)
                 
-                # if cfg.DATA.DATASET in VID_DATASET:
-                #     feat = feat.view(b,t,-1)
-                #     feat = feat.mean(dim=1, keepdim=False)
+                
                 
                     
             ls = [name for name,para in model.named_parameters() if para.grad==None]
-            # print(ls)
-            # print(score)
+
             loss = loss_fn(score, feat, targets, camids,caption_feature,clothes_ids=clothes,train_writer=train_writer,step=step)
             
             train_writer.add_scalar('loss/total', loss.item(), step)
-            # if epoch<cfg.SOLVER.FREEZE_EPOCH:
-            #     current_lr=scheduler.get_last_lr()[0]
-            # else:
+
             current_lr=scheduler._get_lr(epoch)[0]
             train_writer.add_scalar('lr',current_lr , step)
             
@@ -177,7 +166,7 @@ def do_train(cfg,
 
             scaler.step(optimizer)
             scaler.update()
-            if 'center' in cfg.MODEL.METRIC_LOSS_TYPE:
+            if 'center' in cfg.MODEL.LOSS_TYPE:
                 for param in center_criterion.parameters():
                     param.grad.data *= (1. / cfg.SOLVER.CENTER_LOSS_WEIGHT)
                 scaler.step(optimizer_center)

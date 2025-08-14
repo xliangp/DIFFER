@@ -47,11 +47,11 @@ if __name__ == '__main__':
         cfg.merge_from_file(args.config_file)
     if args.loss is not None:
         loss_list=args.loss.split(',')
-        args.opts+=['MODEL.METRIC_LOSS_TYPE',loss_list]
+        args.opts+=['MODEL.LOSS_TYPE',loss_list]
     cfg.merge_from_list(args.opts)
     
         
-    if 'clipBioReverse' not in cfg.MODEL.METRIC_LOSS_TYPE or 'clipBio' not in cfg.MODEL.METRIC_LOSS_TYPE:
+    if 'clipBioReverse' not in cfg.MODEL.LOSS_TYPE or 'clipBio' not in cfg.MODEL.LOSS_TYPE:
         cfg.MODEL.LAST_LAYER='transformer'
             
     output_dir = cfg.OUTPUT_DIR
