@@ -31,7 +31,7 @@ def read_tensorboard_data(logdir):
 # Example usage: Replace 'path_to_tensorboard_logdir' with the path to your TensorBoard log directory
 from pathlib import Path
 script_path = str(Path(__file__).absolute())
-#script_path='/home/xi860799/code/MADE/readLog.py'
+
 
 homeDir=script_path[:script_path.find('code')+4]
 print(homeDir)
