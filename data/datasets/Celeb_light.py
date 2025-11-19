@@ -21,9 +21,8 @@ class Celeb_light(object):
     URL: https://naiq.github.io/LTCC_Perosn_ReID.html#
     """
     dataset_dir = 'Celeb-reID-light'
-    def __init__(self, root='data',caption_dir='/home/xi860799/dataset/CogVLM_results/Celeb-reID-light',caption_model='EVA02-CLIP-bigE-14',load_sum_ft=False, **kwargs):
-        logger = logging.getLogger('EVA-attribure')
-        self.logger=logger
+    def __init__(self, root='data',caption_dir='',caption_model='EVA02-CLIP-bigE-14',load_sum_ft=False, **kwargs):
+        logger = logging.getLogger('DIFFER')
         
         self.dataset_dir = osp.join(root, self.dataset_dir)
 
@@ -49,7 +48,7 @@ class Celeb_light(object):
         num_test_imgs = num_query_imgs + num_gallery_imgs 
         num_total_clothes = num_train_clothes + num_test_clothes
 
-        #logger = logging.getLogger('EVA-attribure')
+
         logger.info("=> Celeb-light loaded")
         logger.info("Dataset statistics:")
         logger.info("  ----------------------------------------")
@@ -209,9 +208,7 @@ class Celeb_light(object):
                 }
             query_dataset.append(data)
             
-            #query_dataset.append((img_path, pid, camid, clothes_id,''))
-            #images_info_query.append({'attributes': imgdir2attribute[img_path]})
-
+          
         for img_path in gallery_img_paths:
             pid, _, camid = map(int, pattern1.search(img_path).groups())
             clothes_id = pattern2.search(img_path).group(1)
@@ -224,15 +221,8 @@ class Celeb_light(object):
                 "clothes_id": clothes_id,
                 }
             gallery_dataset.append(data)
-            #gallery_dataset.append((img_path, pid, camid, clothes_id,''))
-            #images_info_gallery.append({'attributes': imgdir2attribute[img_path]})
-        
+            
         num_imgs_query = len(query_dataset)
         num_imgs_gallery = len(gallery_dataset)
 
         return query_dataset, gallery_dataset, num_pids, num_imgs_query, num_imgs_gallery, num_clothes
-
-if __name__ =='__main__':
-    dataset=Celeb_light('/data/Data/ReIDData')
-    print(dataset.num_train_clothes)
-    print(dataset.num_test_clothes)

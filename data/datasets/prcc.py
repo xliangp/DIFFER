@@ -20,11 +20,11 @@ class PRCC(object):
     URL: https://drive.google.com/file/d/1yTYawRm4ap3M-j0PjLQJ--xmZHseFDLz/view
     """
     dataset_dir = 'PRCC/prcc'
-    def __init__(self, root='data',caption_dir='/home/xi860799/dataset/CogVLM_results/PRCC',caption_model='EVA02-CLIP-bigE-14',load_sum_ft=True, **kwargs):
+    def __init__(self, root='data',caption_dir='',caption_model='EVA02-CLIP-bigE-14',load_sum_ft=False, **kwargs):
         self.root = root
         self.dataset_dir = osp.join(root, self.dataset_dir)
         #print(self.dataset_dir)
-        logger = logging.getLogger('EVA-attribure')
+        logger = logging.getLogger('DIFFER')
         self.logger=logger
         
         self.train_dir = osp.join(self.dataset_dir, 'rgb/train')
@@ -72,7 +72,7 @@ class PRCC(object):
         
 
         self.train = train
-        self.val = val
+        #self.val = val
         self.query_same = query_same
         self.query_diff = query_diff
         self.num_gallery_imgs=num_gallery_imgs
@@ -286,6 +286,3 @@ class PRCC(object):
         return query_dataset_same_clothes, query_dataset_diff_clothes, gallery_dataset, \
                num_pids, num_imgs_query_same, num_imgs_query_diff, num_imgs_gallery, \
                num_clothes, gallery_idx
-
-if __name__ == '__main__':
-    prcc=PRCC(root='/home/gpu/data/BY/data',aux_info=True)

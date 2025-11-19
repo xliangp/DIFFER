@@ -50,12 +50,12 @@ def clip_l2_loss(score, logit_scale=torch.zeros(1)):
     return loss,acc
 
 
-def make_loss(cfg, num_classes,lossTypes=None,test_class_num=0):    # modified by gu
+def make_loss(cfg, num_classes,lossTypes=None):    # modified by gu
     if lossTypes is None:
         lossTypes=cfg.MODEL.LOSS_TYPE
 
     sampler = cfg.DATA.SAMPLER
-    entropy_with_ftAug=True
+   
     feat_dim = 1024
     center_criterion = CenterLoss(num_classes=num_classes, feat_dim=feat_dim, use_gpu=True)  # center loss
     if 'triplet' in cfg.DATA.SAMPLER:
@@ -189,17 +189,11 @@ def make_loss(cfg, num_classes,lossTypes=None,test_class_num=0):    # modified b
                     train_writer.add_scalar('acc/clip_bio_reverse_'+str(i), i2t_acc.item(), step)
                     #print(loss_image)
                     loss_clip_reverse += loss_image 
-                    train_writer.add_scalar('loss/clip_bio_reverse_'+str(i), loss_clip_reverse.item(), step)
-             
-            
+                    train_writer.add_scalar('loss/clip_bio_reverse_'+str(i), loss_clip_reverse.item(), step)      
                 loss+=loss_clip_reverse
 
 
-
-
-                
             return loss
-
 
     else:
         print('expected sampler should be softmax, triplet, softmax_triplet or softmax_triplet_center'

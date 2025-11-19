@@ -21,12 +21,12 @@ class LTCC(object):
     """
     dataset_dir = 'LTCC/LTCC_ReID'
     def __init__(self, root='data',caption_dir='',caption_model='EVA02-CLIP-bigE-14',load_sum_ft=False, **kwargs):
-        #EVA02-CLIP-L-14,EVA02-CLIP-bigE-14
-        logger = logging.getLogger('EVA-attribure')
+       
+        logger = logging.getLogger('DIFFER')
         self.logger=logger
         
         self.dataset_dir = osp.join(root, self.dataset_dir)
-        #self.caption_model = caption_model
+       
         self.train_dir = osp.join(self.dataset_dir, 'train')
         self.query_dir = osp.join(self.dataset_dir, 'query')
         self.gallery_dir = osp.join(self.dataset_dir, 'test')
@@ -48,7 +48,7 @@ class LTCC(object):
         num_test_imgs = num_query_imgs + num_gallery_imgs 
         num_total_clothes = num_train_clothes + num_test_clothes
 
-        #logger = logging.getLogger('EVA-attribure')
+        
         logger.info("=> LTCC loaded")
         logger.info("Dataset statistics:")
         logger.info("  ----------------------------------------")
@@ -96,6 +96,7 @@ class LTCC(object):
             with open(sum_id_file,'r') as f:
                 sum_id_info=json.load(f)
                 
+            # # load clothing summery feature if needed
             # sum_cloth_file=os.path.join(self.caption_sum_dir,'train_caption_summary_clothes.json')
             # with open(sum_cloth_file,'r') as f:
             #     sum_cloth_info=json.load(f)
@@ -129,8 +130,7 @@ class LTCC(object):
         camera_container=sorted(camera_container)
         pid2label = {pid:label for label, pid in enumerate(pid_container)}
         clothes2label = {clothes_id:label for label, clothes_id in enumerate(clothes_container)}
-        #camera2label = {camera_id:label for label, camera_id in enumerate(camera_container)}
-
+        
         num_pids = len(pid_container)
         num_clothes = len(clothes_container)
         num_camera=len(camera_container)
@@ -179,19 +179,7 @@ class LTCC(object):
 
     def _process_dir_test(self, query_path, gallery_path):
         
-        # query_caption_path=query_path.replace(self.dataset_dir,self.caption_dir)+'.npz'
-        # query_caption = np.load(query_caption_path, allow_pickle=True)
-        # query_caption_features = query_caption['data']
-        # query_caption_files = query_caption['metadata']
-        # ftNums=int(query_caption_features.shape[0]/query_caption_files.shape[0])
-        # query_caption_files=list(query_caption_files)
-        
-        # gallery_caption_path=gallery_path.replace(self.dataset_dir,self.caption_dir)+'.npz'
-        # gallery_caption = np.load(gallery_caption_path, allow_pickle=True)
-        # gallery_caption_features = gallery_caption['data']
-        # gallery_caption_files = gallery_caption['metadata']
-        # gallery_caption_files=list(gallery_caption_files)
-        
+         
         query_img_paths = glob.glob(osp.join(query_path, '*.png'))
         gallery_img_paths = glob.glob(osp.join(gallery_path, '*.png'))
         query_img_paths.sort()
@@ -228,13 +216,7 @@ class LTCC(object):
             clothes_id = pattern2.search(img_path).group(1)
             camid -= 1 # index starts from 0
             clothes_id = clothes2label[clothes_id]
-            
-            # caption_path=os.path.join(self.caption_dir,os.path.splitext(img_path[len(self.dataset_dir)+1:])[0]+'.npy')
-            # if os.path.isfile(caption_path):
-            #     caption_feature=np.load(caption_path)
-            # else:
-            #     logging.info(f"fail to find file {caption_path}")
-            #     caption_feature=np.zeros((2,1024))
+          
             
             data={
                 "image_path": img_path,
@@ -243,14 +225,10 @@ class LTCC(object):
                 "clothes_id": clothes_id,
             }
              
-            # caption_feature_index=query_caption_files.index(osp.basename(img_path)[:-4])
-            # caption_feature_load=query_caption_features[caption_feature_index*ftNums:(caption_feature_index+1)*ftNums]
-            # caption_feature=caption_feature_load[self.bio_index+self.non_bio_index]
-            # data['caption_feature']=caption_feature
+         
            
             query_dataset.append(data) 
-            #query_dataset.append((img_path, pid, camid, clothes_id,caption_feature[:2,:]))
-           
+          
 
         for img_path in gallery_img_paths:
             pid, _, camid = map(int, pattern1.search(img_path).groups())
@@ -258,11 +236,7 @@ class LTCC(object):
             camid -= 1 # index starts from 0
             clothes_id = clothes2label[clothes_id]
             
-            # caption_path=os.path.join(self.caption_dir,os.path.splitext(img_path[len(self.dataset_dir)+1:])[0]+'.npy')
-            # if os.path.isfile(caption_path):
-            #     caption_feature=np.load(caption_path)
-            # else:
-            #     logging.info(f"fail to find file {caption_path}")
+          
             data={
                 "image_path": img_path,
                 "pid": pid,
@@ -270,10 +244,6 @@ class LTCC(object):
                 "clothes_id": clothes_id,
                 }
             
-            # caption_feature_index=gallery_caption_files.index(osp.basename(img_path)[:-4])
-            # caption_feature_load=gallery_caption_features[caption_feature_index*ftNums:(caption_feature_index+1)*ftNums]
-            # caption_feature=caption_feature_load[self.bio_index+self.non_bio_index]
-            # data['caption_feature']=caption_feature
             gallery_dataset.append(data) 
            
            

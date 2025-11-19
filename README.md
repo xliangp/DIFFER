@@ -57,7 +57,7 @@ Our trained weight can be found [here](https://drive.google.com/drive/folders/1R
 
 > **Reproducibility Note**  
 > This project uses adversarial training, which can be inherently unstable.  
-> Although we fixed the random seed, final results may vary across runs due to FPS16 training and training dynamics.   
+> Although we fix the random seed, final results may still vary across runs with the same configuration due to FP16 training and inherent training dynamics.     
 > To reproduce the results reported in our paper, we recommend running the training multiple times.
 
 3, To evaluate the model,

@@ -77,7 +77,7 @@ _C.DATA.PIN_MEMORY = True
 # Number of data loading threads
 _C.DATA.NUM_WORKERS = 4
 # Data root
-_C.DATA.ROOT = '/home/c3-0/datasets'
+_C.DATA.ROOT = ''
 # Number of instances
 _C.DATA.NUM_INSTANCES = 2 #8
 # Batch size during testing
@@ -87,11 +87,11 @@ _C.DATA.SAMPLER = 'softmax_triplet'
 # Extract data containing attributes during data processing, options: 'True', 'False'
 _C.DATA.AUX_INFO = False
 # Filename containing attributes
-_C.DATA.META_DIR = 'PAR_PETA_105.txt'
+
 _C.DATA.NOBIO_INDEX=['2']
 _C.DATA.BIO_INDEX='0'
 _C.DATA.TEXT_MODEL='EVA02-CLIP'
-_C.DATA.CAPTION_DIR='/home/xi860799/dataset/CogVLM_results/LTCC_ReID2'
+_C.DATA.CAPTION_DIR=''
 _C.DATA.TEXT_MODEL_VERSION='EVA02-CLIP-bigE-14'
 _C.DATA.SUMMERY_TEXT=True
 

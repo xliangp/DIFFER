@@ -66,8 +66,6 @@ if __name__ == "__main__":
     if cfg.DATA.DATASET == 'prcc':
         trainloader, queryloader_same, queryloader_diff, galleryloader, dataset, train_sampler,val_loader,val_loader_same= build_dataloader(
             cfg)
-    elif cfg.DATA.DATASET == 'CCVID_VIDEO':
-        trainloader, queryloader, galleryloader, dataset, train_sampler,val_loader= build_dataloader(cfg)
     else:
         trainloader, queryloader, galleryloader, dataset, train_sampler ,val_loader= build_dataloader(cfg)
 
@@ -84,18 +82,15 @@ if __name__ == "__main__":
 
     if cfg.DATA.DATASET == 'prcc':
         do_inference(cfg,
-                     model,
-                     #galleryloader,
-                     dataset,
-                     val_loader=val_loader,
-                     val_loader_same=val_loader_same
-                     )
+                    model,
+                    dataset,
+                    val_loader=val_loader,
+                    val_loader_same=val_loader_same
+                    )
     else:
         do_inference(cfg,
-                 model,
-                 #galleryloader,
-                 dataset,
-                val_loader=val_loader
-              
-                 )
+                    model,
+                    dataset,
+                    val_loader=val_loader
+                    )
 

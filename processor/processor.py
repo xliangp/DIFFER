@@ -3,7 +3,7 @@ import os
 import time
 import torch
 from utils.meter import AverageMeter
-from utils.metrics import R1_mAP_eval,R1_mAP_eval_LTCC,R1_mAP_eval_CCVID_VIDEO,eval_ttt
+from utils.metrics import R1_mAP_eval,R1_mAP_eval_LTCC
 from solver import make_optimizer
 from solver.scheduler_factory import create_scheduler
 from loss import make_loss
@@ -14,7 +14,7 @@ import datetime
 import numpy as np
 import gc
 
-VID_DATASET = ['CCVID_VIDEO']
+
 def unfreeze_parameters(model):
     for param in model.parameters():
         param.requires_grad = True    
@@ -56,14 +56,9 @@ def do_train(cfg,
    
     loss_meter = AverageMeter()
     acc_meter = AverageMeter()
-    if cfg.DATA.DATASET == 'ltcc' or cfg.DATA.DATASET =='ccvid':
+    if cfg.DATA.DATASET == 'ltcc':
         evaluator_diff = R1_mAP_eval_LTCC(dataset.num_query_imgs, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)  # ltcc
         evaluator_general = R1_mAP_eval(dataset.num_query_imgs, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)
-    elif cfg.DATA.DATASET == 'CCVID_VIDEO':
-        evaluator = R1_mAP_eval_CCVID_VIDEO(dataset.num_query_imgs, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM,
-                                            query_vid2clip_index=dataset.query_vid2clip_index,
-                                            gallery_vid2clip_index=dataset.gallery_vid2clip_index,
-                                            num_gallery=dataset.num_gallery_imgs)  # ltcc
 
     elif cfg.DATA.DATASET == 'prcc':
         evaluator_diff = R1_mAP_eval(dataset.num_query_imgs_diff, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)  # prcc
@@ -80,7 +75,7 @@ def do_train(cfg,
     model.eval()
     #evaluator.reset()
     epoch=0
-    if cfg.DATA.DATASET == 'ltcc' or cfg.DATA.DATASET =='ccvid':
+    if cfg.DATA.DATASET == 'ltcc':
         evaluator_diff.reset()
         evaluator_general.reset()
 
@@ -90,15 +85,15 @@ def do_train(cfg,
     else:
         evaluator.reset()
 
-    zeroShotTest=False
-    if zeroShotTest:
+    pretrainModelTest=False
+    if pretrainModelTest:
         logger.info("Test the model at the beginning of training")
         if cfg.DATA.DATASET == 'prcc':
             logger.info("Clothes changing setting")
             rank1= test(cfg, model, evaluator_diff, val_loader, logger, device,epoch, train_writer)
             logger.info("Standard setting")
             test(cfg, model, evaluator_same, val_loader_same, logger, device, epoch,  train_writer,test=True)
-        elif cfg.DATA.DATASET == 'ltcc' or  cfg.DATA.DATASET =='ccvid':
+        elif cfg.DATA.DATASET == 'ltcc':
             logger.info("Clothes changing setting")
             rank1 = test(cfg, model, evaluator_diff, val_loader, logger, device,epoch,train_writer, ltcc=True)
             logger.info("Standard setting")
@@ -111,9 +106,9 @@ def do_train(cfg,
         start_time = time.time()
         loss_meter.reset()
         acc_meter.reset()
-       
-        
-        if cfg.DATA.DATASET == 'ltcc' or cfg.DATA.DATASET =='ccvid':
+
+
+        if cfg.DATA.DATASET == 'ltcc':
             evaluator_diff.reset()
             evaluator_general.reset()
 
@@ -125,9 +120,7 @@ def do_train(cfg,
         
         scheduler.step(epoch)
         model.train()
-        #param_index_to_name = {idx: name for idx, (name, param) in enumerate(model.named_parameters())}
-
-        #print(param_index_to_name)
+      
         for idx, data in enumerate(train_loader):
             step=idx+len(train_loader)*epoch
             
@@ -135,12 +128,8 @@ def do_train(cfg,
             targets=data['pid']
             camids=data['camid']
             clothes=data['clothes_id']
-            if 'caption_feature' in data:
-                caption_feature=data['caption_feature']
-            else:
-                caption_feature=None
-        
-            
+            caption_feature=data['caption_feature'] if 'caption_feature' in data else None
+                   
             optimizer.zero_grad()
             optimizer_center.zero_grad()
             
@@ -149,10 +138,6 @@ def do_train(cfg,
               
                 score, feat = model(samples, cam_label=camids)
                 
-                
-                
-                    
-            ls = [name for name,para in model.named_parameters() if para.grad==None]
 
             loss = loss_fn(score, feat, targets, camids,caption_feature,clothes_ids=clothes,train_writer=train_writer,step=step)
             
@@ -205,7 +190,7 @@ def do_train(cfg,
                 rank1= test(cfg, model, evaluator_diff, val_loader, logger, device,epoch, train_writer)
                 logger.info("Standard setting")
                 test(cfg, model, evaluator_same, val_loader_same, logger, device, epoch,  train_writer,test=True)
-            elif cfg.DATA.DATASET == 'ltcc' or cfg.DATA.DATASET =='ccvid':
+            elif cfg.DATA.DATASET == 'ltcc':
                 logger.info("Clothes changing setting")
                 rank1 = test(cfg, model, evaluator_diff, val_loader, logger, device,epoch,train_writer, ltcc=True)
                 logger.info("Standard setting")
@@ -236,32 +221,21 @@ def do_inference(cfg,
                  model,
                  dataset,
                  val_loader = None,
-                 val_loader_same=None,
-                 TTT=False):
+                 val_loader_same = None):
     logger = logging.getLogger("DIFFER.test")
     logger.info("Enter inferencing")
 
     logger.info("transreid inferencing")
     device = "cuda"
-    if cfg.DATA.DATASET == 'ltcc' or cfg.DATA.DATASET =='ccvid':
-        if TTT:
-            print(dataset.num_ttt_gallery_imgs)
-            evaluator_diff = R1_mAP_eval_LTCC(dataset.num_ttt_query_imgs,dataset.num_ttt_gallery_imgs, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM,gallery_first=True)  # ltcc
-        else:
-            evaluator_diff = R1_mAP_eval_LTCC(dataset.num_query_imgs, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)  # ltcc
+    if cfg.DATA.DATASET == 'ltcc':
+        evaluator_diff = R1_mAP_eval_LTCC(dataset.num_query_imgs, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)  # ltcc
         evaluator_general = R1_mAP_eval(dataset.num_query_imgs, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)
-    elif cfg.DATA.DATASET == 'CCVID_VIDEO':
-        evaluator = R1_mAP_eval_CCVID_VIDEO(dataset.num_query_imgs, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM,
-                                            query_vid2clip_index=dataset.query_vid2clip_index,
-                                            gallery_vid2clip_index=dataset.gallery_vid2clip_index,
-                                            num_gallery=dataset.num_gallery_imgs,
-                                            ) 
     elif cfg.DATA.DATASET == 'prcc':
         evaluator_diff = R1_mAP_eval(dataset.num_query_imgs_diff, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)  # prcc
         evaluator_same = R1_mAP_eval(dataset.num_query_imgs_same, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)
     else:
         evaluator = R1_mAP_eval(dataset.num_query_imgs, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM,ignore_cam=True)
-    if cfg.DATA.DATASET == 'ltcc' or cfg.DATA.DATASET =='ccvid':
+    if cfg.DATA.DATASET == 'ltcc':
         evaluator_diff.reset()
         evaluator_general.reset()
 
@@ -275,40 +249,22 @@ def do_inference(cfg,
     if cfg.DATA.DATASET == 'prcc':
         logger.info("Clothes changing setting")
         test(cfg, model, evaluator_diff, val_loader, logger, device, test=True,clothChanging=True)
-        # logger.info("Standard setting")
-        # test(cfg, model, evaluator_same, val_loader_same, logger, device, test=True)
-    elif cfg.DATA.DATASET == 'ltcc' or cfg.DATA.DATASET =='ccvid':
+        logger.info("Standard setting")
+        test(cfg, model, evaluator_same, val_loader_same, logger, device, test=True)
+    elif cfg.DATA.DATASET == 'ltcc':
         logger.info("Clothes changing setting")
-        test(cfg, model, evaluator_diff, val_loader, logger, device, test=True,ltcc=True,clothChanging=True,TTT=TTT)
+        test(cfg, model, evaluator_diff, val_loader, logger, device, test=True,ltcc=True,clothChanging=True)
         logger.info("Standard setting")
         test(cfg, model, evaluator_general, val_loader, logger, device, test=True)
     else:
         test(cfg, model, evaluator, val_loader, logger, device, test=True,clothChanging=True)
 
-def test(cfg, model, evaluator, val_loader, logger, device, epoch=None, test_writer=None,test=False,ltcc=False,clothChanging=False,TTT=False):
-    subspace_Flag=False
-    if TTT:
-        if cfg.MODEL.SUBSPACE_DIM>0:
-            subspace_Flag=True
-        datasetName='tttTest'
-    else:
-        datasetName='test'
-        
-    if subspace_Flag:
-        total_img_paths=[]
-        total_feat=[]
-        total_feat_vis=[]
-        total_scores_cls=[]
-        bio_num=len(cfg.DATA.BIO_INDEX.strip('*').split('*'))
-        total_scores_clip=[[] for i in range(bio_num)]
+def test(cfg, model, evaluator, val_loader, logger, device, epoch=None, test_writer=None,test=False,ltcc=False,clothChanging=False):
         
     for n_iter, data in enumerate(val_loader):
         if n_iter%100==0:
             logger.info(f"processing batch {n_iter}/{len(val_loader)}")
-        # if not cfg.MODEL.CLOTH_ONLY:
-        #     imgs, pids, camids, clothes_id, clothes_ids, meta,img_paths=data
-        # else:
-        #     imgs, pids, camids, clothes_id, clothes_ids,caption_feature,img_paths=data
+    
         imgs=data['image']
         pids=data['pid']
         camids=data['camid']
@@ -318,72 +274,22 @@ def test(cfg, model, evaluator, val_loader, logger, device, epoch=None, test_wri
         with torch.no_grad():
             
             imgs = imgs.to(device) 
-            # if cfg.DATA.DATASET in VID_DATASET:
-            #     b,c,t,h,w = imgs.size()
-            #     imgs= imgs.view(-1,c,h,w)
-            #     clothes_ids = clothes_ids.to(device)     
-            #     cloth_labels_extended = clothes_ids.unsqueeze(1).repeat(1, t)
-            #     camids = cloth_labels_extended.view(-1)
+         
             camids0=camids.to(device) 
-            if not subspace_Flag:
-                feat = model(imgs, cam_label=camids0)
-            else:
-                feat,feat_vis,score = model.foward_subspace(imgs, cam_label=camids0)
-                total_img_paths.extend(img_paths)
-                total_feat.extend(feat.cpu().numpy())
-                total_feat_vis.extend(feat_vis.cpu().numpy())
-                total_scores_cls.extend(score['cls_score'].cpu().numpy())
-                for i in range(bio_num):
-                    total_scores_clip[i].extend(score['clip_bio_score'][i].cpu().numpy())
-               
-            # if cfg.DATA.DATASET in VID_DATASET:
-            #     feat = feat.view(b,t,-1)
-            #     feat = feat.mean(dim=1, keepdim=False)
+           
+            feat = model(imgs, cam_label=camids0)
             
             if ltcc:
                 evaluator.update((feat, pids, camids, clothes_id,img_paths))
-            elif cfg.DATA.DATASET in VID_DATASET:
-                evaluator.update((feat, pids, camids, clothes_id,img_paths[0]))
             else:
                 evaluator.update((feat, pids, camids,clothes_id,img_paths))
                 
-    if cfg.DATA.DATASET in VID_DATASET:
-        cmc, mAP ,cmc_sc, mAP_sc,_,queryFeature, galleryFeature,imgpath= evaluator.compute()
-        logger.info("Computing CMC and mAP only for the same clothes setting")
-        logger.info("Results ---------------------------------------------------")
-        logger.info('top1:{:.1%} top5:{:.1%} top10:{:.1%} top20:{:.1%} mAP:{:.1%}'.format(cmc_sc[0], cmc_sc[4], cmc_sc[9], cmc_sc[19], mAP_sc))
-        logger.info("-----------------------------------------------------------")
-
-        logger.info("Computing CMC and mAP only for clothes-changing")
-        logger.info("Results ---------------------------------------------------")
-        logger.info('top1:{:.1%} top5:{:.1%} top10:{:.1%} top20:{:.1%} mAP:{:.1%}'.format(cmc[0], cmc[4], cmc[9], cmc[19], mAP))
-        logger.info("-----------------------------------------------------------")
-        #return cmc[0]
-    else:
-        cmc, mAP, _, _, _, queryFeature, galleryFeature,imgpath = evaluator.compute()
-        for r in [1, 5, 10]:
-            logger.info("CMC curve, Rank-{:<3}:{:.1%}".format(r, cmc[r - 1]))
-        logger.info("mAP-:{:.1%}".format(mAP))
+   
+    cmc, mAP, _, _, _, queryFeature, galleryFeature,imgpath = evaluator.compute()
+    for r in [1, 5, 10]:
+        logger.info("CMC curve, Rank-{:<3}:{:.1%}".format(r, cmc[r - 1]))
+    logger.info("mAP-:{:.1%}".format(mAP))
         
-    saveFeature=True
-    if test and saveFeature and clothChanging:
-        outputDir=os.path.join(os.path.dirname(cfg.TEST.WEIGHT),'test')
-        os.makedirs(outputDir,exist_ok=True)
-        print("save to ",outputDir)
-        np.save(os.path.join(outputDir,'queryFeature.npy'),np.asarray(queryFeature))
-        np.save(os.path.join(outputDir,'galleryFeature.npy'),np.asarray(galleryFeature))
-        np.save(os.path.join(outputDir,'imagePaths.npy'),imgpath)
-        
-    if saveFeature and subspace_Flag and clothChanging:
-        total_scores_cls=np.asarray(total_scores_cls)
-        total_scores_clip=[np.asarray(x) for x in total_scores_clip]
-        total_img_paths=np.asarray(total_img_paths)
-        np.save(os.path.join(cfg.OUTPUT_DIR,f'{datasetName}_total_scores_cls.npy'),total_scores_cls)
-        for i in range(bio_num):
-            np.save(os.path.join(cfg.OUTPUT_DIR,f'{datasetName}_total_scores_clip_{i}.npy'),total_scores_clip[i])
-        np.save(os.path.join(cfg.OUTPUT_DIR,f'{datasetName}_total_img_paths.npy'),total_img_paths)
-        np.save(os.path.join(cfg.OUTPUT_DIR,f'{datasetName}_total_feat.npy'),np.asarray(total_feat))
-        np.save(os.path.join(cfg.OUTPUT_DIR,f'{datasetName}_total_feat_vis.npy'),np.asarray(total_feat_vis))
    
     rank1 = cmc[0] 
     if test :

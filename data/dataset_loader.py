@@ -132,10 +132,7 @@ class VideoDataset(Dataset):
         Returns:
             tuple: (clip, pid, camid) where pid is identity of the clip.
         """
-        # if self.cloth_changing:
-        #     img_paths, pid, camid, clothes_id = self.dataset[index]
-        # else:
-        #     img_paths, pid, camid = self.dataset[index]
+       
         img_paths=self.dataset[index]['image_path'].copy()
 
         if self.temporal_transform is not None:
@@ -150,13 +147,9 @@ class VideoDataset(Dataset):
         # trans T x C x H x W to C x T x H x W
         clip = torch.stack(clip, 0).permute(1, 0, 2, 3)
 
-        # if self.cloth_changing:
-        #     return clip, pid, camid, clothes_id
-        # else:
-        #     return clip, pid, camid
+        
         self.dataset[index]['image']=clip
-        #print(len(img_paths))
-        #return img, pid, camid, clothes_id,cloth_id_batch,caption_feature,img_path
+       
         data={'image':clip,
               'pid':self.dataset[index]['pid'],
               'camid':self.dataset[index]['camid'],
